@@ -1,0 +1,103 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\User;
+use App\Models\Storage;
+use App\Models\Receipt;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+
+class EmployeeController extends Controller
+{
+    /**
+     * Display a listing of the resource.
+     */
+    public function index(Request $request)
+    {
+        $employees = User::select(
+            'users.id','users.email',
+            'storages.name',
+            DB::raw('COUNT(receipts.user_id) as total_receipt')
+        )->join(
+            'storages','users.storage_id','storages.id'
+        )->leftJoin('receipts','receipts.user_id','users.id')
+        ->where('users.role', 0) //Lấy ra employee
+        ->groupBy('users.id','users.email','storages.name')->get();
+        return view('pages.employee.index', compact('employees'));
+    }
+
+    /**
+     * Show the form for creating a new resource.
+     */
+    public function create()
+    {
+        //Get all storages.
+        $storages = Storage::get();
+        return view('pages.employee.create', compact('storages'));
+    }
+
+    /**
+     * Store a newly created resource in storage.
+     */
+    public function store(Request $request)
+    {
+        $param = $request->all();
+        $user = new User();
+        $user->email = $param['email'];
+        $user->password = $param['password'];
+        $user->role = User::ROLE_EMPLOYEE;
+        $user->storage_id = $param['storages'];
+        $user->save();
+        return redirect('/employees/index');
+    }
+
+    /**
+     * Display the specified resource.
+     */
+    public function detail(string $id)
+    {
+        $employee = User::find($id);
+        $storages = Storage::all();
+        $receipts = Receipt::join(
+                'categories','receipts.category_id','categories.id'
+            )->select(
+                'receipts.id','receipts.name as receipt_name',
+                'categories.name as category_name',
+                'receipts.quantity','receipts.delivery_date',
+                'receipts.status'
+            )->where('user_id',$id)
+            ->orderBy('status','ASC') //ASC:theo ttu tăng dần, DSC: theo tt giảm dần
+            ->paginate(30); //phân trang
+        return view('pages.employee.detail', compact('employee','storages','receipts'));
+    }
+
+    /**
+     * Show the form for editing the specified resource.
+     */
+    public function edit(string $id)
+    {
+        //
+    }
+
+    /**
+     * Update the specified resource in storage.
+     */
+    public function update(Request $request, string $id)
+    {
+        $param = $request->all();
+        $user = User::find($id);
+        $user->storage_id = $param['storage'];
+        $user->password = $param['password'];
+        $user->update();
+        return redirect('/employees/detail/' . $id);
+    }
+
+    /**
+     * Remove the specified resource from storage.
+     */
+    public function destroy(string $id)
+    {
+        //
+    }
+}
