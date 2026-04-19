@@ -118,6 +118,7 @@ class ReceiptController extends Controller
         $receipt = Receipt::find($id);
         $receipt->status = $param['status']; 
         $receipt->update();
+        //Sau khi update xong se quay ve trang chu
         return redirect()->back(); 
     }
     /** Controller method export excel receipt file.
